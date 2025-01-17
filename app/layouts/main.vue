@@ -11,7 +11,7 @@
                     </p>
                     <div class="flex gap-4 items-center">
                         <button @click="open = true" v-if="boardsStore.columns.length > 0" class="bg-primary px-4 py-4 text-white text-sm rounded-full font-bold">Add New Task</button>
-                        <img src="https://ui-avatars.com/api/?name=Cameron+Dahl&bold=true&font-size=0.33"
+                        <img :src="'https://ui-avatars.com/api/?name=' + userStore.user?.first_name + '&bold=true&font-size=0.33'"
                             class="h-12 w-12 rounded-full">
                     </div>
                 </div>
@@ -26,6 +26,8 @@
   <script setup lang="ts"> 
   import { useBoardsStore } from '~/stores/boards';
   import NewTask  from '../components/modals/NewTask.vue';
+    import { useAuthStore } from '~/stores/auth';
+    const userStore = useAuthStore();
 const boardsStore = useBoardsStore();
 const open = ref(false);
 onMounted(async () => {

@@ -11,6 +11,7 @@
       <NuxtPage></NuxtPage>
       </NuxtLayout>
     </div>
+    <Loading />
 </template>
 <script setup lang="ts">
 const authStore = useAuthStore()

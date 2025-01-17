@@ -5,6 +5,7 @@
                 <img src="/logo-dark.svg" alt="Logo" class="w-32 mx-auto">
                 <h1 class="text-2xl font-bold text-center mt-6">Welcome back! </h1>
                 <p class="text-center text-gray-500 mt-2">Log in to your account to continue</p>
+                <Alerts />
                 <form class="mt-6" @submit.prevent="userLogin">
                     <div class="mb-4">
                         <label for="username" class="block text-sm font-medium text-gray-700">Username</label>

@@ -6,7 +6,7 @@
         </div>
     </div>
         <div class="h-full flex flex-col gap-4 justify-center items-center" v-else>
-        <h1 class="text-sm dark:text-white text-grayTheme font-semibold">This board is empty. Create a new column to get started.</h1>
+        <h1 class="text-sm text-mediumGray font-semibold">This board is empty. Create a new column to get started.</h1>
         <div>
             <button @click="open = true" class="bg-primary px-4 py-2 text-white rounded-full font-bold text-xs">Add New Column</button>
         </div>
@@ -32,14 +32,18 @@ watch(
   () => boardsStore.boards,
   (newValue, oldValue) => {
     boardsStore.setBoard(Number(route.params.id));
-    boardsStore.connectToBoardsWebSocket();
+    if (boardsStore.websocket.status === 'disconnected') {
+      boardsStore.connectToBoardsWebSocket();
+    }
   }
 )
 
 watch(
   () => boardsStore.board,
   (newValue, oldValue) => {
-    boardsStore.connectToBoardsWebSocket();
+    if (boardsStore.websocket.status === 'disconnected') {
+      boardsStore.connectToBoardsWebSocket();
+    }
   }
 )
 

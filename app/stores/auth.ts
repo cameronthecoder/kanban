@@ -26,7 +26,7 @@ export interface TokenResponse {
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null as User | null,
-    token: useCookie('token').value || null,
+    token: useCookie('token').value,
   }),
   getters: {
     isLoggedIn: (state) => !!state.token,
@@ -43,10 +43,16 @@ export const useAuthStore = defineStore("auth", {
             });
 
 
-        if (data.value != null) {
+
+        if (status.value == "success" && data.value != null) {
+            this.token = data.value.access_token
+            refreshCookie('token')
             useCookie('token').value = data.value.access_token
-            refreshCookie("token")
             navigateTo('/')
+        } else {
+          console.log(data.value);
+          console.log(status.value);
+          
         }
         
     },

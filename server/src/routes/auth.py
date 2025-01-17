@@ -60,7 +60,7 @@ class UserRegister(BaseModel):
 
 
 @router.post(
-    "/token", responses={400: {"description": "Incorrect username or password"}}
+    "/token", responses={401: {"description": "Incorrect username or password"}}
 )
 async def token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
@@ -70,7 +70,7 @@ async def token(
         await db.execute(select(User).where(User.username == form_data.username))
     ).scalar_one_or_none()
     if not result or not bcrypt.checkpw(form_data.password.encode(), result.password):
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
 
     user: User = result
 

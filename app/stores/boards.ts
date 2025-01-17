@@ -1,5 +1,8 @@
 import { useAPI } from '~/compostables/useAPI'
 import type { User } from '~/stores/auth'
+
+
+
 export interface Board {
     id: number
     name: string
@@ -29,7 +32,9 @@ export interface Column {
     tasks: Array<Task>
 }
 
+
 export const useBoardsStore = defineStore("boards", {
+    
     state: () => ({
         boards: [] as Board[],
         board: undefined as Board | undefined,
@@ -37,7 +42,7 @@ export const useBoardsStore = defineStore("boards", {
         selectedTask: undefined as Task | undefined,
         websocket: {
             socket: undefined as WebSocket | undefined,
-            status: "disconnected" as "disconnected" | "connecting" | "connected"
+            status: "disconnected" as "disconnected" | "connecting" | "connected" | "error"
         }
     }),
     actions: {
@@ -45,13 +50,8 @@ export const useBoardsStore = defineStore("boards", {
             this.selectedTask = task
         },
         async fetchBoards() {
-            const { data, status, error } = await useAPI<Board[]>('/api/boards/')
+            const { data, status, error } = await useAPI<Board[]>('/api/boards/');
             if (data.value != null) {
-                console.log(data.value);
-
-                console.log(status);
-                
-
                 this.boards = data.value
                 if (error) {
                     console.log("error fetching boards");
@@ -59,6 +59,9 @@ export const useBoardsStore = defineStore("boards", {
             }
         },  
         connectToBoardsWebSocket() {
+            this.websocket.status = "connecting"
+            const loadingStore = useLoadingStore();
+            loadingStore.setLoading(true);
             if (this.websocket.socket) {
                 this.websocket.socket.close();
             }
@@ -119,15 +122,19 @@ export const useBoardsStore = defineStore("boards", {
 
             ws.onopen = () => {
                 this.websocket.status = "connected"
+                loadingStore.setLoading(false);
                 this.sendEvent({ type: "columns", data: {} })
             }
 
             ws.onclose = () => {
+                loadingStore.setLoading(false);
                 this.websocket.status = "disconnected"
             }
 
             ws.onerror = (error) => {
-                this.websocket.status = "disconnected"
+                console.log(error);
+                
+                this.websocket.status = "error"
             }
 
 
