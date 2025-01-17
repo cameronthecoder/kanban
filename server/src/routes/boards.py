@@ -6,6 +6,7 @@ from fastapi import (
     Path,
     HTTPException,
 )
+from uuid import uuid4, UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import select
 from fastapi.encoders import jsonable_encoder
@@ -173,8 +174,12 @@ async def add_task_to_column(
     await db.refresh(t)
     return {"task": t.model_dump()}
 
+class Connection(BaseModel):
+    ws: WebSocket
+    id: UUID
+    user: User
 
-active_connections: List[WebSocket] = []
+active_connections: List[Connection] = []
 
 async def broadcast_message(message):
     for connection in active_connections:
@@ -185,12 +190,15 @@ async def broadcast_message(message):
 async def websocket_endpoint(
     websocket: WebSocket,
     board_id: Annotated[int, Path(title="The ID of the board to get")],
+    token: str,
     db: AsyncSession = Depends(get_db),
 ):
     global pending_updates, LAST_UPDATE_TIME
-
+    uuid = uuid4()
+    user = await get_current_user(token, db)
     await websocket.accept()
-    active_connections.append(websocket)
+    await broadcast_message({"type": "connection", "data": {"user": user, "id": str(uuid)}})
+    conn = active_connections.append(Connection(ws=websocket, id=uuid, user=user))
 
     try:
 
@@ -266,9 +274,10 @@ async def websocket_endpoint(
                 case _:
                     print(data)
 
-    except:
-        active_connections.remove(websocket)
-        print("A user disconnected")
+    except WebSocketDisconnect:
+        active_connections.remove(conn)
+        await broadcast_message({"type": "disconnection", "data": {"user": user, "id": str(uuid)}})
+        print(conn.user.first_name, "disconnected")
 
 
 async def save_batch_updates(updates):
