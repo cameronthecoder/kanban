@@ -3,7 +3,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     const authStore = useAuthStore()
   
     const api = $fetch.create({
-      baseURL: 'http://localhost:8000',
+      baseURL: 'https://sea-turtle-app-5uo5v.ondigitalocean.app/',
       onRequest({ request, options, error }) {
         if (authStore.token) {
           // note that this relies on ofetch >= 1.4.0 - you may need to refresh your lockfile

@@ -46,6 +46,14 @@ async def get_boards(
     boards = results.scalars().all()
     return boards
 
+@router.get("/add-user/{board_id}/{user_id}/", response_model=Board)
+async def add_user_to_board(board_id: Annotated[int, Path(title="The ID of the board to get")], user_id: Annotated[int, Path(title="The ID of the user to get")], db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user),):
+    board = await db.get(Board, board_id)
+    user = await db.get(User, user_id)
+    board.users.append(user)
+    await db.commit()
+    return board
+
 
 class ColumnCreate(BaseModel):
     name: str
@@ -258,7 +266,7 @@ async def websocket_endpoint(
                 case _:
                     print(data)
 
-    except WebSocketDisconnect:
+    except:
         active_connections.remove(websocket)
         print("A user disconnected")
 

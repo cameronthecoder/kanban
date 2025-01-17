@@ -63,7 +63,7 @@ export const useBoardsStore = defineStore("boards", {
                 this.websocket.socket.close();
             }
             // TODO: get base url from config
-            const ws = new WebSocket(`ws://localhost:8000/api/boards/${this.board?.id}/ws/?token=${useCookie("token").value}`)
+            const ws = new WebSocket(`wss://sea-turtle-app-5uo5v.ondigitalocean.app/api/boards/${this.board?.id}/ws/?token=${useCookie("token").value}`)
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data) as Event
 
