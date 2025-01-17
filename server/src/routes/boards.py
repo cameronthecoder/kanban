@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from fastapi import (
     APIRouter,
     Depends,
@@ -174,7 +175,8 @@ async def add_task_to_column(
     await db.refresh(t)
     return {"task": t.model_dump()}
 
-class Connection(BaseModel):
+@dataclass
+class Connection():
     ws: WebSocket
     id: UUID
     user: User
