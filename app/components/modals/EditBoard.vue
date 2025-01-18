@@ -42,6 +42,14 @@ const name = computed({
       },
     });
 
+const props = defineProps<{
+    open: boolean;
+}>();
+
+watch(() => props.open, () => {
+    isAddingColumn.value = false;
+})
+
 
 const deleteColumn = (id: number) => {
     boardsStore.sendEvent({
@@ -73,8 +81,5 @@ const saveChanges = () => {
 }
 
 
-defineProps<{
-    open: boolean;
-}>();
 
 </script>

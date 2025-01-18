@@ -3,6 +3,7 @@ import { useLoadingStore } from "#build/imports"
 export default defineNuxtPlugin((nuxtApp) => {
     const authStore = useAuthStore()
     const alerts = useAlertStore()
+    const route = useRoute()
     const loadingStore = useLoadingStore()
   
     const api = $fetch.create({
@@ -18,7 +19,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         loadingStore.setLoading(false);
       },
       async onResponseError({ response }) {
-        if (response.status === 401) {
+        if (response.status === 401 && route.path !== '/login') {
           alerts.addAlert({
             type: 'error',
             message: 'You need to be logged in to access this page'
@@ -34,7 +35,7 @@ export default defineNuxtPlugin((nuxtApp) => {
             type: 'error',
             message: 'You do not have permission to access this page'
           })
-        } else if (response.status == 400) {
+        } else if (response.status == 401) {
           alerts.addAlert({
             type: 'error',
             message: 'Invalid credentials'

@@ -5492,6 +5492,7 @@ __metadata:
     postcss: "npm:^8.4.49"
     tailwindcss: "npm:^3.4.17"
     vue: "npm:^3.5.13"
+    vue-debounce: "npm:^5.0.1"
     vue-router: "npm:latest"
   languageName: unknown
   linkType: soft
@@ -8141,6 +8142,15 @@ __metadata:
   dependencies:
     ufo: "npm:^1.5.4"
   checksum: 10c0/c5c241a2395ee34d8105fb6010027165f54f79f7cffebb73cb9da35b9ec006d910457b3e32026688f7f6a718e660040abffc43cd559d1e31cfea22b32fa0ba7f
+  languageName: node
+  linkType: hard
+
+"vue-debounce@npm:^5.0.1":
+  version: 5.0.1
+  resolution: "vue-debounce@npm:5.0.1"
+  peerDependencies:
+    vue: ">= 3.0.0"
+  checksum: 10c0/6e1f68d278e04a67558d9474a3565db8ca3ea6ba08a871d4ea64894e03c0ed6db9ffb769ebd33fcb6eefdc0eeed0193b7607db9cf74df36dddda32539c9e68db
   languageName: node
   linkType: hard
 

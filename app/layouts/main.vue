@@ -7,11 +7,12 @@
                     <h1 class="text-xl mb-3 font-semibold" v-if="boardsStore.board">{{boardsStore.board.name}} (id: {{boardsStore.board.id}})</h1>
                     </div>
                     <p class="py-2 px-4 text-xs bg-green-400 dark:text-darkGray rounded-full font-bold uppercase" v-if="boardsStore.board">
-                        {{ boardsStore.websocket.status }}
+                        {{ boardsStore.websocket.status }} -
+                        {{ boardsStore.websocket.connections.length }} connections
                     </p>
                     <div class="flex gap-4 items-center">
                         <button @click="open = true" v-if="boardsStore.columns.length > 0" class="bg-primary px-4 py-4 text-white text-sm rounded-full font-bold">Add New Task</button>
-                        <img :src="'https://ui-avatars.com/api/?name=' + userStore.user?.first_name + '&bold=true&font-size=0.33'"
+                        <img :src="'https://ui-avatars.com/api/?name=' + userStore.user?.first_name + '+' + userStore.user?.last_name + '&bold=true&font-size=0.33'"
                             class="h-12 w-12 rounded-full">
                     </div>
                 </div>

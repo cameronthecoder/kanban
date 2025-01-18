@@ -7,6 +7,7 @@ from fastapi import (
     Path,
     HTTPException,
 )
+from fastapi.websockets import WebSocketState
 from uuid import uuid4, UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import select
@@ -24,7 +25,7 @@ router = APIRouter(
 )
 from src.database import get_db
 from src.models.user import User
-from src.models.board import Board, Column, Task
+from src.models.board import Board, Column, Task, BoardUsersLink
 from .auth import get_current_user
 
 # Buffer for storing incoming updates
@@ -48,13 +49,28 @@ async def get_boards(
     boards = results.scalars().all()
     return boards
 
-@router.get("/add-user/{board_id}/{user_id}/", response_model=Board)
-async def add_user_to_board(board_id: Annotated[int, Path(title="The ID of the board to get")], user_id: Annotated[int, Path(title="The ID of the user to get")], db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user),):
-    board = await db.get(Board, board_id)
+
+@router.get("/add-user/{board_id}/{user_id}/")
+async def add_user_to_board(
+    board_id: Annotated[int, Path(title="The ID of the board to get")],
+    user_id: Annotated[int, Path(title="The ID of the user to get")],
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    board = await db.scalar(select(Board).where(Board.id == board_id))
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if board.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="You do not have access to this board"
+        )
     user = await db.get(User, user_id)
-    board.users.append(user)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    link = BoardUsersLink(board_id=board_id, user_id=user_id)
+    db.add(link)
     await db.commit()
-    return board
+    return {"message": "OK"}
 
 
 class ColumnCreate(BaseModel):
@@ -175,17 +191,27 @@ async def add_task_to_column(
     await db.refresh(t)
     return {"task": t.model_dump()}
 
+
 @dataclass
-class Connection():
-    ws: WebSocket
+class Connection:
+    _ws: WebSocket
     id: UUID
     user: User
 
+    def to_json(self):
+        return {"id": str(self.id), "user": self.user.model_dump()}
+
+
 active_connections: List[Connection] = []
 
-async def broadcast_message(message):
+
+async def broadcast_message(message, conn, echo=False):
     for connection in active_connections:
-        await connection.send_json(message)
+        if echo or conn != connection:
+            logger.info(str(connection._ws.client_state))
+            if connection._ws.client_state == WebSocketState.CONNECTED:
+                await connection._ws.send_json(message)
+
 
 # Handle WebSocket messages and batch updates
 @router.websocket("/{board_id}/ws/")
@@ -199,14 +225,28 @@ async def websocket_endpoint(
     uuid = uuid4()
     user = await get_current_user(token, db)
     await websocket.accept()
-    await broadcast_message({"type": "connection", "data": {"user": user, "id": str(uuid)}})
-    conn = active_connections.append(Connection(ws=websocket, id=uuid, user=user))
-
+    conn = Connection(_ws=websocket, id=uuid, user=user)
+    active_connections.append(conn)
+    await broadcast_message(
+        {
+            "type": "connection",
+            "data": {
+                "user": user.model_dump(),
+                "id": str(uuid),
+                "connections": [c.to_json() for c in active_connections],
+            },
+        },
+        conn,
+        True,
+    )
+    await conn._ws.send_json(
+        {"type": "user_info", "data": {"user": user.model_dump(), "id": str(uuid)}}
+    )
     try:
 
         while True:
             data = await websocket.receive_json()
-
+            print(data)
             match data["type"]:
                 case "columns":
                     results = await db.scalars(
@@ -238,7 +278,9 @@ async def websocket_endpoint(
                     await db.commit()
                     await db.refresh(board)
                     await broadcast_message(
-                        {"type": "edit_board", "data": jsonable_encoder(board)}
+                        {"type": "edit_board", "data": jsonable_encoder(board)},
+                        conn,
+                        True,
                     )
                 case "add_task":
                     task = Task(**data["data"])
@@ -248,7 +290,7 @@ async def websocket_endpoint(
                     await db.commit()
                     await db.refresh(task)
                     await broadcast_message(
-                        {"type": "add_task", "data": jsonable_encoder(task)}
+                        {"type": "add_task", "data": jsonable_encoder(task)}, conn, True
                     )
                 case "move_task":
                     task = await db.get(Task, data["data"]["task_id"])
@@ -256,7 +298,14 @@ async def websocket_endpoint(
                     await db.commit()
                     await db.refresh(task)
                     await broadcast_message(
-                        {"type": "move_task", "data": jsonable_encoder({"task": task, "to": data["data"]["to"]})}
+                        {
+                            "type": "move_task",
+                            "data": jsonable_encoder(
+                                {"task": task, "to": data["data"]["to"]}
+                            ),
+                        },
+                        conn,
+                        True,
                     )
                 case "add_column":
                     column = Column(**data["data"], board_id=board_id)
@@ -264,22 +313,45 @@ async def websocket_endpoint(
                     await db.commit()
                     await db.refresh(column)
                     await broadcast_message(
-                        {"type": "add_column", "data": jsonable_encoder(column)}
+                        {"type": "add_column", "data": jsonable_encoder(column)},
+                        conn,
+                        True,
                     )
                 case "delete_column":
                     column = await db.get(Column, data["data"]["column_id"])
                     await db.delete(column)
                     await db.commit()
                     await broadcast_message(
-                        {"type": "delete_column", "data": jsonable_encoder(column)}
+                        {"type": "delete_column", "data": jsonable_encoder(column)},
+                        conn,
+                        True,
+                    )
+                case "mouse_move":
+                    await broadcast_message(
+                        {
+                            "type": "mouse_move",
+                            **data,
+                            "id": str(conn.id),
+                            "user": conn.user.model_dump(),
+                        },
+                        conn,
+                        False,
                     )
                 case _:
                     print(data)
 
     except WebSocketDisconnect:
-        active_connections.remove(conn)
-        await broadcast_message({"type": "disconnection", "data": {"user": user, "id": str(uuid)}})
         print(conn.user.first_name, "disconnected")
+    finally:
+        active_connections.remove(conn)
+        await broadcast_message(
+            {
+                "type": "disconnection",
+                "data": {"user": user.model_dump(), "id": str(uuid)},
+            },
+            conn,
+            False,
+        )
 
 
 async def save_batch_updates(updates):
